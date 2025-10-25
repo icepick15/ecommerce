@@ -1,0 +1,3 @@
+# Add Docker files but not environment secrets
+.env.docker
+docker-compose.override.yml

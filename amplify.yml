@@ -1,13 +1,4 @@
 version: 1
-backend:
-  phases:
-    preBuild:
-      commands:
-        - cd backend
-        - npm ci
-    build:
-      commands:
-        - echo "Backend build complete"
 frontend:
   phases:
     preBuild:
@@ -24,4 +15,3 @@ frontend:
   cache:
     paths:
       - frontend/node_modules/**/*
-      - backend/node_modules/**/*
