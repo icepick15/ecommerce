@@ -13,9 +13,16 @@ export const getAllProducts = async (req, res) => {
 
 export const getFeaturedProducts = async (req, res) => {
 	try {
-		let featuredProducts = await redis.get("featured_products");
-		if (featuredProducts) {
-			return res.json(JSON.parse(featuredProducts));
+		// Try to get from Redis cache first
+		let featuredProducts = null;
+		try {
+			featuredProducts = await redis.get("featured_products");
+			if (featuredProducts) {
+				return res.json(JSON.parse(featuredProducts));
+			}
+		} catch (redisError) {
+			console.error('Redis get error:', redisError.message);
+			// Continue to fetch from MongoDB if Redis fails
 		}
 
 		// if not in redis, fetch from mongodb
@@ -23,16 +30,21 @@ export const getFeaturedProducts = async (req, res) => {
 		// which is good for performance
 		featuredProducts = await Product.find({ isFeatured: true }).lean();
 
-		if (!featuredProducts) {
+		if (!featuredProducts || featuredProducts.length === 0) {
 			return res.status(404).json({ message: "No featured products found" });
 		}
 
-		// store in redis for future quick access
-
-		await redis.set("featured_products", JSON.stringify(featuredProducts));
+		// Try to store in redis for future quick access
+		try {
+			await redis.set("featured_products", JSON.stringify(featuredProducts));
+		} catch (redisError) {
+			console.error('Redis set error:', redisError.message);
+			// Continue even if cache update fails
+		}
 
 		res.json(featuredProducts);
 	} catch (error) {
+		console.error('Get featured products error:', error);
 		res.status(500).json({ message: "Server error", error: error.message });
 	}
 };
@@ -139,12 +151,18 @@ export const toggleFeaturedProduct = async (req, res) => {
 		if (product) {
 			product.isFeatured = !product.isFeatured;
 			const updatedProduct = await product.save();
-			await updateFeaturedProductsCache();
+			
+			// Update cache but don't fail if Redis is unavailable
+			updateFeaturedProductsCache().catch(err => {
+				console.error('Failed to update Redis cache:', err.message);
+			});
+			
 			res.json(updatedProduct);
 		} else {
 			res.status(404).json({ message: "Product not found" });
 		}
 	} catch (error) {
+		console.error('Toggle featured error:', error);
 		res.status(500).json({ message: "Server error", error: error.message });
 	}
 };
@@ -155,7 +173,9 @@ async function updateFeaturedProductsCache() {
 
 		const featuredProducts = await Product.find({ isFeatured: true }).lean();
 		await redis.set("featured_products", JSON.stringify(featuredProducts));
+		console.log('✅ Featured products cache updated');
 	} catch (error) {
-		// Silently handle cache update errors
+		// Log but don't throw - cache update is not critical
+		console.error('Redis cache update failed:', error.message);
 	}
 }

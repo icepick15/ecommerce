@@ -60,7 +60,7 @@ export const createCheckoutSession = async (req, res) => {
 			{ headers: paystack.headers }
 		);
 
-		if (totalAmount >= 2000000) { // ₦20,000 in kobo
+		if (totalAmount >= 5000000) { // ₦50,000 in kobo
 			await createNewCoupon(req.user._id);
 		}
 
@@ -142,7 +142,7 @@ async function createNewCoupon(userId) {
 
 	const newCoupon = new Coupon({
 		code: "GIFT" + Math.random().toString(36).substring(2, 8).toUpperCase(),
-		discountPercentage: 10,
+		discountPercentage: 5,
 		expirationDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
 		userId: userId,
 	});
