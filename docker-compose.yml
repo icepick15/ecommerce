@@ -1,7 +1,6 @@
 version: '3.8'
 
 services:
-  # Redis service
   redis:
     image: redis:7-alpine
     container_name: ecommerce-redis
@@ -14,13 +13,14 @@ services:
     networks:
       - ecommerce-network
 
-  # Backend API service
   backend:
     build: .
     container_name: ecommerce-backend
     restart: unless-stopped
     ports:
       - "5000:5000"
+    env_file:
+      - .env.docker
     environment:
       - NODE_ENV=production
       - PORT=5000
